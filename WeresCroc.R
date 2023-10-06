@@ -1,11 +1,6 @@
 generateInitialState = function(pos)
 {
-  initialState = c(rep(1/37, 40))
-  initialState[[pos[1]]] = 0
-  initialState[[pos[2]]] = 0
-  initialState[[pos[3]]] = 0
-  print(initialState)
-  print("Initial State")
+  initialState = c(rep(1/40, 40))
   return(initialState)
 }
 
@@ -69,6 +64,7 @@ ObservationMatrix <- function(probs, position,readings){
   return ( ProbProbs )
   
 }
+
 BFS<- function(edges, start,goal){
   queue<-c()
   queue[length(queue)+1]=start
@@ -111,6 +107,40 @@ BFS<- function(edges, start,goal){
   
 }
 
+updateState = function(state, tMatrix, obs_vector, positions)
+{
+  new_state = state %*% t(tMatrix)
+  new_state_mod = new_state
+  if (!is.na(positions[1]))
+  {
+    if (positions[1] > 0)
+    {
+      #new_state[positions[1]] = 0
+      new_state_mod[positions[1]] = 0
+    }
+  }
+  if (!is.na(positions[2]))
+  {
+    if (positions[2] > 0)
+    {
+      #new_state[positions[2]] = 0
+      new_state_mod[positions[2]] = 0
+    }
+  }
+  #new_state[positions[3]] = 0
+  new_state_mod[positions[3]] = 0
+  sum = 0
+  sum2 = 0
+  for (i in 1:40)
+  {
+    new_state[[i]] = new_state[[i]] * obs_vector[[i]]
+    new_state_mod[[i]] = new_state_mod[[i]] * obs_vector[[i]]
+  }
+  new_state = new_state / sum(new_state)
+  new_state_mod = new_state_mod / sum(new_state_mod)
+  return (list(new_state, new_state_mod))
+}
+
 myFunction = function(moveInfo,readings,positions,edges,probs) {
   if (moveInfo$mem$status == 0)
   {
@@ -140,55 +170,49 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
     }
   }
   Croc_pos = deadPos
+  move1 = 0
+  move2 = 0
   if (!dead)
   {
     initialState = moveInfo$mem$state
     tMatrix = moveInfo$mem$matrix
     obs_vector=ObservationMatrix(probs,positions,  readings)
-    new_state = initialState %*% t(tMatrix)
-    new_state_mod = new_state
-    if (!is.na(positions[1]))
-    {
-      if (positions[1] > 0)
-      {
-        #new_state[positions[1]] = 0
-        new_state_mod[positions[1]] = 0
-      }
-    }
-    if (!is.na(positions[2]))
-    {
-      if (positions[2] > 0)
-      {
-        #new_state[positions[2]] = 0
-        new_state_mod[positions[2]] = 0
-      }
-    }
-    #new_state[positions[3]] = 0
-    #new_state_mod[positions[3]] = 0
-    sum = 0
-    sum2 = 0
-    for (i in 1:40)
-    {
-      new_state[[i]] = new_state[[i]] * obs_vector[[i]]
-      new_state_mod[[i]] = new_state_mod[[i]] * obs_vector[[i]]
-    }
-    new_state = new_state / sum(new_state)
-    new_state_mod = new_state_mod / sum(new_state_mod)
-    #print(new_state_mod)
-    edga = moveInfo$mem$edgeOptions
-    Croc_pos=which.max(new_state_mod)
-    pEdges = edga[[Croc_pos]]
-    badInd = which(pEdges == Croc_pos)
-    pEdges = pEdges[-badInd[[1]]]
-    for (i in pEdges)
-    {
-      edgeProb = new_state_mod[[i]]
-      #print(i)
-      #print(edgeProb)
-      #print("-----")
-    }
+    new_states = updateState(initialState, tMatrix, obs_vector, positions)
+    new_state = new_states[[1]]
+    new_state_mod = new_states[[2]]
+    new_pos = which.max(new_state_mod)
+
+
+    move1 = BFS(edges, positions[3], new_pos)
+    move1 = move1[2]
     
-    moveInfo$mem$state = new_state
+    new_states = updateState(new_state, tMatrix, obs_vector, positions)
+    t1 = which.max(new_states[[1]])
+    new_states = updateState(new_states[[1]], tMatrix, obs_vector, positions)
+    t2 = which.max(new_states[[1]])
+    new_states = updateState(new_states[[1]], tMatrix, obs_vector, positions)
+    t3 = which.max(new_states[[1]])
+    
+    print("---------------")
+    print(new_pos)
+    print(t1)
+    print(t2)
+    print(t3)
+    print("Best Future Hole")
+    #print(Mode(c(new_pos, t1, t2, t3)))
+    print("---------------")
+    #print(new_state_mod)
+    Croc_pos=which.max(new_states[[1]])
+    #Croc_pos = best_edge
+    
+    moveInfo$mem$state = new_states[[1]]
+  }
+  if (move1 != 0 && move2 != 0)
+  {
+    print(move1)
+    print(move2)
+    moveInfo$moves = c(move1, move2)
+    return (moveInfo)
   }
   path = BFS(edges, positions[3],Croc_pos)
   if(length(path)>2){
@@ -200,8 +224,8 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
   else if(length(path)==1){
     moveInfo$moves <- c(0,0)
   }
-  #print("Croc")
-  #print(Croc_pos)
+  print("Croc")
+  print(Croc_pos)
   #print("Ranger")
   #print(positions[3])
   #print(obs_vector)
