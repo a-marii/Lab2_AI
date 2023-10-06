@@ -164,7 +164,7 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
       }
     }
     #new_state[positions[3]] = 0
-    new_state_mod[positions[3]] = 0
+    #new_state_mod[positions[3]] = 0
     sum = 0
     sum2 = 0
     for (i in 1:40)
@@ -175,7 +175,19 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
     new_state = new_state / sum(new_state)
     new_state_mod = new_state_mod / sum(new_state_mod)
     #print(new_state_mod)
+    edga = moveInfo$mem$edgeOptions
     Croc_pos=which.max(new_state_mod)
+    pEdges = edga[[Croc_pos]]
+    badInd = which(pEdges == Croc_pos)
+    pEdges = pEdges[-badInd[[1]]]
+    for (i in pEdges)
+    {
+      edgeProb = new_state_mod[[i]]
+      #print(i)
+      #print(edgeProb)
+      #print("-----")
+    }
+    
     moveInfo$mem$state = new_state
   }
   path = BFS(edges, positions[3],Croc_pos)
@@ -188,7 +200,10 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
   else if(length(path)==1){
     moveInfo$moves <- c(0,0)
   }
-  print(Croc_pos)
+  #print("Croc")
+  #print(Croc_pos)
+  #print("Ranger")
+  #print(positions[3])
   #print(obs_vector)
   return(moveInfo)
 }
