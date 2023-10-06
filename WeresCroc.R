@@ -58,6 +58,14 @@ ObservationMatrix <- function(probs, position,readings){
     Nitrogen=dnorm(readings[3], probs$nitrogen[i,1], probs$nitrogen[i,2])
     ProbProbs[i]=Solidity*Phosphate*Nitrogen
   }
+  if(!is.na(position[1]) && position[1]<0){
+    pos=-position[1]
+    ProbProbs[pos]=1
+  }
+  else if(!is.na(position[2]) && position[2]<0){
+    pos=-position[2]
+    ProbProbs[pos]=1
+  }
   return ( ProbProbs )
   
 }
@@ -137,12 +145,13 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
     initialState = moveInfo$mem$state
     tMatrix = moveInfo$mem$matrix
     obs_vector=ObservationMatrix(probs,positions,  readings)
-    new_state = initialState %*% tMatrix
+    new_state = initialState %*% t(tMatrix)
     new_state_mod = new_state
     if (!is.na(positions[1]))
     {
       if (positions[1] > 0)
       {
+        #new_state[positions[1]] = 0
         new_state_mod[positions[1]] = 0
       }
     }
@@ -150,9 +159,11 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
     {
       if (positions[2] > 0)
       {
+        #new_state[positions[2]] = 0
         new_state_mod[positions[2]] = 0
       }
     }
+    #new_state[positions[3]] = 0
     new_state_mod[positions[3]] = 0
     sum = 0
     sum2 = 0
@@ -160,11 +171,9 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
     {
       new_state[[i]] = new_state[[i]] * obs_vector[[i]]
       new_state_mod[[i]] = new_state_mod[[i]] * obs_vector[[i]]
-      sum = sum + new_state[[i]]
-      sum2 = sum2 + new_state_mod[[i]]
     }
-    new_state = new_state / sum
-    new_state_mod = new_state_mod / sum2
+    new_state = new_state / sum(new_state)
+    new_state_mod = new_state_mod / sum(new_state_mod)
     #print(new_state_mod)
     Croc_pos=which.max(new_state_mod)
     moveInfo$mem$state = new_state
