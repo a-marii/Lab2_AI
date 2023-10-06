@@ -56,9 +56,8 @@ ObservationMatrix <- function(probs, position,readings){
     Solidity=dnorm(readings[1], probs$salinity[i,1], probs$salinity[i,2])
     Phosphate=dnorm(readings[2], probs$phosphate[i,1], probs$phosphate[i,2])
     Nitrogen=dnorm(readings[3], probs$nitrogen[i,1], probs$nitrogen[i,2])
-    ProbProbs[i]=((Solidity+Phosphate+Nitrogen)/3)^2
+    ProbProbs[i]=Solidity*Phosphate*Nitrogen
   }
-  
   return ( ProbProbs )
   
 }
