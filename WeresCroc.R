@@ -1,7 +1,20 @@
 generateInitialState = function(pos)
 {
-  initialState = c(rep(1/40, 40))
-  return(initialState)
+  if (pos[1] == pos[2])
+  {
+    initialState = c(rep(1/38, 40))
+    initialState[[pos[1]]] = 0
+    initialState[[pos[3]]] = 0
+    return (initialState)
+  }
+  else
+  {
+    initialState = c(rep(1/37, 40))
+    initialState[[pos[1]]] = 0
+    initialState[[pos[2]]] = 0
+    initialState[[pos[3]]] = 0
+    return (initialState)
+  }
 }
 
 generateTransitions = function(edges) {
@@ -107,38 +120,15 @@ BFS<- function(edges, start,goal){
   
 }
 
-updateState = function(state, tMatrix, obs_vector, positions)
+updateState = function(state, tMatrix, obs_vector)
 {
   new_state = state %*% t(tMatrix)
-  new_state_mod = new_state
-  if (!is.na(positions[1]))
-  {
-    if (positions[1] > 0)
-    {
-      #new_state[positions[1]] = 0
-      new_state_mod[positions[1]] = 0
-    }
-  }
-  if (!is.na(positions[2]))
-  {
-    if (positions[2] > 0)
-    {
-      #new_state[positions[2]] = 0
-      new_state_mod[positions[2]] = 0
-    }
-  }
-  #new_state[positions[3]] = 0
-  new_state_mod[positions[3]] = 0
-  sum = 0
-  sum2 = 0
   for (i in 1:40)
   {
     new_state[[i]] = new_state[[i]] * obs_vector[[i]]
-    new_state_mod[[i]] = new_state_mod[[i]] * obs_vector[[i]]
   }
   new_state = new_state / sum(new_state)
-  new_state_mod = new_state_mod / sum(new_state_mod)
-  return (list(new_state, new_state_mod))
+  return (new_state)
 }
 
 myFunction = function(moveInfo,readings,positions,edges,probs) {
@@ -151,69 +141,35 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
     moveInfo$mem$state = generateInitialState(positions)
     moveInfo$mem$edgeOptions = transResult$edgeOptions
   }
+  trav1 = positions[1]
+  trav2 = positions[2]
   dead = F
   deadPos = 0
-  if (!is.na(positions[1]))
+  state = moveInfo$mem$state
+  tMatrix = moveInfo$mem$matrix
+  obs_vector = ObservationMatrix(probs, positions, readings)
+  if (!is.na(trav1) && trav1 < 0)
   {
-    if (positions[1] < 0)
-    {
-      dead = T
-      deadPos = -positions[1]
-    }
+    dead = T
+    deadPos = trav1
   }
-  if (!is.na(positions[2]))
+  if (!is.na(trav2) && trav2 < 0)
   {
-    if (positions[2] < 0)
-    {
-      dead = T
-      deadPos = -positions[2]
-    }
+    dead = T
+    deadPos = trav2
   }
-  Croc_pos = deadPos
-  move1 = 0
-  move2 = 0
-  if (!dead)
+  if (dead)
   {
-    initialState = moveInfo$mem$state
-    tMatrix = moveInfo$mem$matrix
-    obs_vector=ObservationMatrix(probs,positions,  readings)
-    new_states = updateState(initialState, tMatrix, obs_vector, positions)
-    new_state = new_states[[1]]
-    new_state_mod = new_states[[2]]
-    new_pos = which.max(new_state_mod)
-
-
-    move1 = BFS(edges, positions[3], new_pos)
-    move1 = move1[2]
-    
-    new_states = updateState(new_state, tMatrix, obs_vector, positions)
-    t1 = which.max(new_states[[1]])
-    new_states = updateState(new_states[[1]], tMatrix, obs_vector, positions)
-    t2 = which.max(new_states[[1]])
-    new_states = updateState(new_states[[1]], tMatrix, obs_vector, positions)
-    t3 = which.max(new_states[[1]])
-    
-    print("---------------")
-    print(new_pos)
-    print(t1)
-    print(t2)
-    print(t3)
-    print("Best Future Hole")
-    #print(Mode(c(new_pos, t1, t2, t3)))
-    print("---------------")
-    #print(new_state_mod)
-    Croc_pos=which.max(new_states[[1]])
-    #Croc_pos = best_edge
-    
-    moveInfo$mem$state = new_states[[1]]
+    state = c(rep(0, 40))
+    state[deadPos] = 1
   }
-  if (move1 != 0 && move2 != 0)
+  else
   {
-    print(move1)
-    print(move2)
-    moveInfo$moves = c(move1, move2)
-    return (moveInfo)
+    state = updateState(state, tMatrix, obs_vector)
+    state = updateState(state, tMatrix, obs_vector)
+    state = updateState(state, tMatrix, obs_vector)
   }
+  Croc_pos = which.max(state)
   path = BFS(edges, positions[3],Croc_pos)
   if(length(path)>2){
     moveInfo$moves <- c(path[2],path[3])
@@ -229,6 +185,7 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
   #print("Ranger")
   #print(positions[3])
   #print(obs_vector)
+  moveInfo$mem$state = state
   return(moveInfo)
 }
 
