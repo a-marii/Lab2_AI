@@ -1,14 +1,17 @@
-generateInitialState = function()
+generateInitialState = function(pos)
 {
-  initialState = c(rep(1/40, 40))
+  initialState = c(rep(1/37, 40))
+  initialState[[pos[1]]] = 0
+  initialState[[pos[2]]] = 0
+  initialState[[pos[3]]] = 0
+  print(initialState)
+  print("Initial State")
   return(initialState)
 }
 
 generateTransitions = function(edges) {
   tMatrix = matrix(0, nrow=40, ncol=40);
   edgeOptions = vector("list", 40)
-  print(length(edgeOptions[[1]]))
-  print(class(edgeOptions[[1]]))
   myList = rep(list(1), 40)
   for (i in 1:nrow(edges))
   {
@@ -31,8 +34,6 @@ generateTransitions = function(edges) {
     myList[[s1]] = myList[[s1]] + 1
     myList[[s2]] = myList[[s2]] + 1
   }
-  #print("Edge Options")
-  print(edgeOptions[[40]])
   for (i in 1:nrow(edges))
   {
     s1 = edges[i, 1]
@@ -50,25 +51,15 @@ generateTransitions = function(edges) {
 }
 
 ObservationMatrix <- function(probs, position,readings){
-  Solidity=0
-  Phosphate=0
-  Nitrogen=0
-  ProbProbs=list()
+  ProbProbs=c()
   for (i in 1:length(probs$salinity[,1])){
     Solidity=dnorm(readings[1], probs$salinity[i,1], probs$salinity[i,2])
     Phosphate=dnorm(readings[2], probs$phosphate[i,1], probs$phosphate[i,2])
     Nitrogen=dnorm(readings[3], probs$nitrogen[i,1], probs$nitrogen[i,2])
-    ProbProbs[i]=(Solidity+Phosphate+Nitrogen)/3
+    ProbProbs[i]=((Solidity+Phosphate+Nitrogen)/3)^2
   }
-  if(!is.na(position[1]) && position[1]<0){
-    pos=-position[1]
-    ProbProbs[pos]=1
-  }
-  else if(!is.na(position[2]) && position[2]<0){
-    pos=-position[2]
-    ProbProbs[pos]=1
-  }
-  return ( ProbProbs)
+  
+  return ( ProbProbs )
   
 }
 BFS<- function(edges, start,goal){
@@ -120,13 +111,65 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
     moveInfo$mem$status = 1
     transResult = generateTransitions(edges)
     moveInfo$mem$matrix = transResult$tMatrix
+    moveInfo$mem$state = generateInitialState(positions)
     moveInfo$mem$edgeOptions = transResult$edgeOptions
   }
-  initialState = generateInitialState()
-  tMatrix = moveInfo$mem$matrix
-  obs_vector=ObservationMatrix(probs,positions,  readings)
-  Croc_pos=which.min(obs_vector)
-  my_pos=positions[3]
+  dead = F
+  deadPos = 0
+  if (!is.na(positions[1]))
+  {
+    if (positions[1] < 0)
+    {
+      dead = T
+      deadPos = -positions[1]
+    }
+  }
+  if (!is.na(positions[2]))
+  {
+    if (positions[2] < 0)
+    {
+      dead = T
+      deadPos = -positions[2]
+    }
+  }
+  Croc_pos = deadPos
+  if (!dead)
+  {
+    initialState = moveInfo$mem$state
+    tMatrix = moveInfo$mem$matrix
+    obs_vector=ObservationMatrix(probs,positions,  readings)
+    new_state = initialState %*% tMatrix
+    new_state_mod = new_state
+    if (!is.na(positions[1]))
+    {
+      if (positions[1] > 0)
+      {
+        new_state_mod[positions[1]] = 0
+      }
+    }
+    if (!is.na(positions[2]))
+    {
+      if (positions[2] > 0)
+      {
+        new_state_mod[positions[2]] = 0
+      }
+    }
+    new_state_mod[positions[3]] = 0
+    sum = 0
+    sum2 = 0
+    for (i in 1:40)
+    {
+      new_state[[i]] = new_state[[i]] * obs_vector[[i]]
+      new_state_mod[[i]] = new_state_mod[[i]] * obs_vector[[i]]
+      sum = sum + new_state[[i]]
+      sum2 = sum2 + new_state_mod[[i]]
+    }
+    new_state = new_state / sum
+    new_state_mod = new_state_mod / sum2
+    #print(new_state_mod)
+    Croc_pos=which.max(new_state_mod)
+    moveInfo$mem$state = new_state
+  }
   path = BFS(edges, positions[3],Croc_pos)
   if(length(path)>2){
     moveInfo$moves <- c(path[2],path[3])
@@ -138,7 +181,7 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
     moveInfo$moves <- c(0,0)
   }
   print(Croc_pos)
-  print(path)
+  #print(obs_vector)
   return(moveInfo)
 }
 
