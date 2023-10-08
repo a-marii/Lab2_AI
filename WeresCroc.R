@@ -207,12 +207,11 @@ myFunction = function(moveInfo,readings,positions,edges,probs) {
     
     moveInfo$mem$state = new_states[[1]]
   }
-  if (move1 != 0 && move2 != 0)
+  if (dead)
   {
-    print(move1)
-    print(move2)
-    moveInfo$moves = c(move1, move2)
-    return (moveInfo)
+    new_state = c(rep(0, 40))
+    new_state[[Croc_pos]] = 1
+    moveInfo$mem$state = new_state
   }
   path = BFS(edges, positions[3],Croc_pos)
   if(length(path)>2){
